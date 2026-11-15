@@ -1,0 +1,86 @@
+# name: test/sql/unified.test
+# description: vercel.unified.runs (deployments in the cross-orchestrator runs shape) against the replay server
+# group: [vercel]
+
+require vgi
+
+require-env VERCEL_WORKER
+
+require-env VERCEL_FIXTURE_URL
+
+statement ok
+LOAD httpfs;
+
+statement ok
+LOAD json;
+
+statement ok
+ATTACH 'vercel' (TYPE vgi, LOCATION '{VERCEL_WORKER}');
+
+statement ok
+CREATE SECRET v_fixture (TYPE vercel, TOKEN 'test-token', TEAM_ID 'team_acme', BASE_URL '{VERCEL_FIXTURE_URL}');
+
+# Exactly the shared unified.runs columns and types.
+query TT
+SELECT column_name, column_type FROM (DESCRIBE vercel.unified.runs);
+----
+orchestrator	VARCHAR
+run_id	VARCHAR
+pipeline	VARCHAR
+status	VARCHAR
+raw_status	VARCHAR
+trigger	VARCHAR
+queued_at	TIMESTAMP WITH TIME ZONE
+started_at	TIMESTAMP WITH TIME ZONE
+ended_at	TIMESTAMP WITH TIME ZONE
+duration_seconds	DOUBLE
+url	VARCHAR
+
+query TTTTTTTTRT
+SELECT orchestrator, run_id, pipeline, status, raw_status, trigger, started_at, ended_at, duration_seconds, url FROM vercel.unified.runs ORDER BY queued_at;
+----
+vercel	dpl_web1	web	success	READY	event	2026-11-01 10:00:10+00	2026-11-01 10:01:10+00	60.0	https://vercel.com/acme/web/web1
+vercel	dpl_docs1	docs	success	READY	manual	2026-11-02 08:00:05+00	2026-11-02 08:00:35+00	30.0	https://vercel.com/acme/docs/docs1
+vercel	dpl_web2	web	success	READY	event	2026-11-02 10:00:10+00	2026-11-02 10:01:40+00	90.0	https://vercel.com/acme/web/web2
+vercel	dpl_web3	web	success	READY	event	2026-11-03 10:00:10+00	2026-11-03 10:02:10+00	120.0	https://vercel.com/acme/web/web3
+vercel	dpl_web4	web	failed	ERROR	event	2026-11-04 10:00:10+00	NULL	NULL	https://vercel.com/acme/web/web4
+vercel	dpl_docs2	docs	cancelled	CANCELED	manual	2026-11-05 09:00:04+00	2026-11-05 09:00:20+00	16.0	https://vercel.com/acme/docs/docs2
+vercel	dpl_api1	api	running	BUILDING	event	2026-11-06 08:00:30+00	NULL	NULL	https://vercel.com/acme/api/api1
+vercel	dpl_api2	api	queued	QUEUED	api	NULL	NULL	NULL	https://vercel.com/acme/api/api2
+
+# status → raw Vercel states; pipeline → app.
+statement ok
+CREATE OR REPLACE TEMP TABLE m AS SELECT coalesce(max(seq), 0) AS s FROM read_json('{VERCEL_FIXTURE_URL}/__requests?prefix=/');
+
+query TT
+SELECT run_id, status FROM vercel.unified.runs WHERE pipeline = 'web' AND status IN ('failed', 'running') ORDER BY run_id;
+----
+dpl_web4	failed
+
+query T
+SELECT query FROM read_json('{VERCEL_FIXTURE_URL}/__requests?path=/v6/deployments') WHERE seq > (SELECT s FROM m) ORDER BY seq LIMIT 1;
+----
+{"app": "web", "limit": "100", "state": "BUILDING,ERROR", "teamId": "team_acme"}
+
+# 'skipped' has no Vercel equivalent: nothing is pushed, nothing matches.
+query I
+SELECT count(*) FROM vercel.unified.runs WHERE status = 'skipped';
+----
+0
+
+# The point of the shape: UNION ALL with another orchestrator's runs.
+query TTI
+SELECT orchestrator, status, count(*) FROM (
+  SELECT orchestrator, run_id, pipeline, status, raw_status, trigger, queued_at, started_at, ended_at, duration_seconds, url
+  FROM vercel.unified.runs
+  UNION ALL
+  SELECT 'github', '1', 'ci.yml', 'success', 'completed', 'event', TIMESTAMPTZ '2026-11-01 00:00:00+00',
+         NULL::TIMESTAMPTZ, NULL::TIMESTAMPTZ, NULL::DOUBLE, NULL
+) GROUP BY ALL ORDER BY ALL;
+----
+github	success	1
+vercel	cancelled	1
+vercel	failed	1
+vercel	queued	1
+vercel	running	1
+vercel	success	4

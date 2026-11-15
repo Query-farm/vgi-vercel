@@ -1,0 +1,44 @@
+# vgi-lint settings for this worker: https://github.com/Query-farm/vgi-lint-check
+# `make lint-explain`, `vgi-lint lint` in this directory, and CI's metadata job all
+# read this file. Look up a rule with `vgi-lint explain VGI123`; print the metadata tag
+# contract with `vgi-lint spec`.
+
+# The worker to attach, relative to this directory. Build it first with `make build`.
+location = "bin/vgi-vercel-worker"
+
+# Fail on warnings while you build. Raise this to "info" before you publish the worker.
+fail_on = "info"
+
+# Waive a finding only with a kind and a reason, so the waiver can be audited:
+#   domain-exemption  permanent and legitimate for this worker
+#   deferred          a real defect you will fix; add expires = "YYYY-MM-DD"
+#   timing            slow or flaky because of the environment, not the metadata
+#   tooling-bug       the linter is wrong; report it upstream
+ignore = [
+  # { code = "VGI146", kind = "domain-exemption", reason = "every entry point needs a key" },
+]
+
+# Adopting the gate on a worker that already has findings? Record them once with
+#   vgi-lint lint --baseline vgi-lint-baseline --update-baseline
+# and uncomment the next line. Only new findings fail after that.
+# baseline = "vgi-lint-baseline"
+
+# The REST API returns each table from a separate call, so no row can attest that its
+# reference still resolves (an object can be deleted between the two scans); the
+# FOREIGN_KEY records would have to be ENFORCED + ALL_ROWS, which would be untrue.
+[per_object."vercel.main.aliases"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "project_id / deployment_id come from a separate API call; a project or deployment can be deleted between scans, so the reference cannot be attested ENFORCED" }]
+[per_object."vercel.main.deployments"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "project_id comes from a separate API call than projects; a project can be deleted between scans" }]
+[per_object."vercel.main.domains"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "project_id comes from a separate API call than projects; a project can be deleted between scans" }]
+[per_object."vercel.main.env_var_names"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "project_id comes from a separate API call than projects; a project can be deleted between scans" }]
+[per_object."vercel.main.firewall_configs"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "project_id comes from a separate API call than projects; a project can be deleted between scans" }]
+[per_object."vercel.main.integrations"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "integration_id is the marketplace integration (oac_…), not a row of this table; integrations.id is the installed configuration" }]
+[per_object."vercel.main.team_members"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "team_id is the secret's TEAM_ID; teams lists only teams the token's user belongs to, which a team token need not satisfy" }]
+[per_object."vercel.unified.runs"]
+ignore = [{ code = "VGI808", kind = "domain-exemption", reason = "run_id is this table's own primary key (the shared unified.runs shape), not a reference to another table" }]

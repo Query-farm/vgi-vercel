@@ -1,0 +1,63 @@
+# Private graders for the public vgi.agent_test_tasks in the worker's catalog metadata.
+# `vgi-lint lint --ai` runs an agent on each prompt and grades it (VGI920).
+#
+# Every vercel object needs a `vercel` secret (TOKEN, TEAM_ID) pointing at a Vercel
+# account; the offline replay team in test/mock_api/server.py works too (BASE_URL). The
+# fixture data are static, so every task compares against a reference query.
+tasks:
+  - name: project_frameworks
+    reference_sql: SELECT name, framework FROM vercel.main.projects ORDER BY name
+  - name: production_branches
+    reference_sql: SELECT name, production_branch, repo FROM vercel.main.projects ORDER BY name
+  - name: failed_deploys
+    reference_sql: SELECT id, project FROM vercel.main.deployments WHERE state = 'error' ORDER BY id
+  - name: prod_deploys_web
+    reference_sql: >-
+      SELECT count(*) AS deployments FROM vercel.main.deployments WHERE project = 'web' AND environment = 'production'
+  - name: avg_build_time
+    reference_sql: >-
+      SELECT project, avg(build_duration_seconds) AS avg_build_seconds FROM vercel.main.deployments
+      WHERE state = 'ready' GROUP BY project ORDER BY project
+  - name: deploy_branch
+    reference_sql: SELECT branch, commit_sha FROM vercel.main.deployment('dpl_web2')
+  - name: failed_build_log
+    reference_sql: >-
+      SELECT text FROM vercel.main.build_logs('dpl_web4') WHERE type = 'stderr' AND text LIKE 'Error%' ORDER BY line
+  - name: deployment_aliases
+    reference_sql: SELECT unnest(aliases) AS alias FROM vercel.main.deployment('dpl_web3') ORDER BY alias
+  - name: failed_checks
+    reference_sql: >-
+      SELECT name FROM vercel.main.deployment_checks('dpl_web3')
+      WHERE conclusion IS DISTINCT FROM 'succeeded' ORDER BY name
+  - name: unverified_domains
+    reference_sql: SELECT project, domain FROM vercel.main.domains WHERE NOT verified ORDER BY project, domain
+  - name: dns_mx
+    reference_sql: >-
+      SELECT value, mx_priority FROM vercel.main.dns_records WHERE domain = 'acme.com' AND type = 'MX' ORDER BY mx_priority
+  - name: plain_prod_env
+    reference_sql: >-
+      SELECT key FROM vercel.main.env_var_names
+      WHERE project = 'web' AND type = 'plain' AND list_contains(targets, 'production') ORDER BY key
+  - name: team_owners
+    reference_sql: SELECT username FROM vercel.main.team_members WHERE role = 'OWNER' ORDER BY username
+  - name: integration_scopes
+    reference_sql: SELECT slug, scopes FROM vercel.main.integrations ORDER BY slug
+  - name: firewall_enabled
+    reference_sql: SELECT project FROM vercel.main.firewall_configs WHERE firewall_enabled ORDER BY project
+  - name: runs_by_status
+    reference_sql: SELECT status, count(*) AS runs FROM vercel.unified.runs GROUP BY status ORDER BY status
+  - name: team_ids
+    reference_sql: SELECT slug, id FROM vercel.main.teams ORDER BY slug
+  - name: expiring_domains
+    reference_sql: >-
+      SELECT name, expires_at, renew FROM vercel.main.account_domains WHERE bought_at IS NOT NULL ORDER BY name
+  - name: alias_targets
+    reference_sql: SELECT deployment_id FROM vercel.main.aliases WHERE alias = 'web.acme.com'
+  - name: domain_misconfigured
+    reference_sql: SELECT misconfigured FROM vercel.main.domain_config('api.acme.io')
+  - name: edge_config_sizes
+    reference_sql: SELECT slug, item_count FROM vercel.main.edge_configs ORDER BY slug
+  - name: env_changes
+    reference_sql: >-
+      SELECT username, created_at, text FROM vercel.main.activity_events()
+      WHERE type = 'project-env-variable' ORDER BY created_at
