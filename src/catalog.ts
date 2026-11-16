@@ -8,10 +8,10 @@ import {
   CATALOG_COMMENT,
   CATALOG_NAME,
   CATALOG_TAGS,
-  SCHEMA_DOC_MD,
+  SCHEMA_COMMENT,
   SCHEMA_TAGS,
   SOURCE_URL,
-  UNIFIED_DOC_MD,
+  UNIFIED_COMMENT,
   UNIFIED_TAGS,
 } from "./meta.ts";
 import { SECRET_TYPE } from "./vercel/client.ts";
@@ -79,14 +79,14 @@ export const CATALOG: CatalogDescriptor = {
   schemas: [
     {
       path: ["main"],
-      comment: SCHEMA_DOC_MD,
+      comment: SCHEMA_COMMENT,
       functions: FUNCTIONS,
       tables: MAIN_TABLES,
       tags: { ...SCHEMA_TAGS, "vgi.example_queries": JSON.stringify(MAIN_EXAMPLES.slice(0, 12)) },
     },
     {
       path: ["unified"],
-      comment: UNIFIED_DOC_MD,
+      comment: UNIFIED_COMMENT,
       functions: [],
       tables: UNIFIED_TABLES,
       tags: { ...UNIFIED_TAGS, "vgi.example_queries": JSON.stringify(tableExamples(UNIFIED_TABLES)) },

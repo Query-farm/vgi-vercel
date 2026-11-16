@@ -114,6 +114,9 @@ export const CATALOG_DOC_MD =
   "runs from other VGI workers.\n\n" +
   SOURCES_MD;
 
+export const SCHEMA_COMMENT =
+  "Read-only Vercel REST API collections: projects, deployments, domains, configuration and team data.";
+
 export const SCHEMA_DOC_LLM =
   "Vercel REST API collections as SQL. Most are catalog tables (for example vercel.main.deployments) whose " +
   "WHERE filters push down; per-project tables (domains, env_var_names, firewall_configs) read one project " +
@@ -127,6 +130,9 @@ export const SCHEMA_DOC_MD =
   "Vercel projects, deployments, domains, configuration and team data. Catalog tables push WHERE filters " +
   "into the API; per-deployment detail, logs and checks are table functions taking a deployment id.\n\n" +
   "All objects need a `vercel` secret.";
+
+export const UNIFIED_COMMENT =
+  "Vercel deployments in the cross-orchestrator runs shape, for UNION ALL with CI and orchestrator workers.";
 
 export const UNIFIED_DOC_LLM =
   "Cross-orchestrator views. `runs` has exactly the columns every orchestration / CI worker exposes in " +
