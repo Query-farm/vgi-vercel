@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Vercel projects, deployments, build logs, domains, env var names, integrations and team members as SQL tables in DuckDB (read-only).",
