@@ -42,7 +42,7 @@ the one for your platform, checks its SHA-256 and caches it:
 ```sql
 INSTALL vgi FROM community;
 LOAD vgi;
-ATTACH 'vercel' (TYPE vgi, LOCATION 'github-auto://Query-farm/vgi-vercel@v0.1.1');
+ATTACH 'vercel' (TYPE vgi, LOCATION 'github-auto://Query-farm/vgi-vercel@v0.1.2');
 CREATE SECRET vercel (TYPE vercel, TOKEN '<access token>', TEAM_ID 'team_…');
 SELECT name, framework, production_branch FROM vercel.main.projects ORDER BY name;
 ```
